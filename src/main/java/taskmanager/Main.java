@@ -8,6 +8,7 @@ import taskmanager.model.project.Project;
 import taskmanager.search.SearchCriteria;
 import taskmanager.search.SearchResult;
 import taskmanager.service.TaskService;
+import taskmanager.service.CsvService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -16,11 +17,13 @@ import java.util.Scanner;
 
 public class Main {
     private static TaskService taskService;
+    private static CsvService csvService;
     private static Scanner scanner;
 
     public static void main(String[] args) {
         User user = new User("Default User");
         taskService = new TaskService(user);
+        csvService = new CsvService(taskService);
         scanner = new Scanner(System.in);
 
         System.out.println("=== Personal Task Management System ===");
@@ -40,6 +43,7 @@ public class Main {
                 case "7": assignTaskToProject(); break;
                 case "8": addSubtask(); break;
                 case "9": searchTasks(); break;
+                case "10": exportTasksToCsv(); break;
                 case "0": running = false; System.out.println("Goodbye!"); break;
                 default: System.out.println("Invalid option.");
             }
@@ -59,6 +63,7 @@ public class Main {
         System.out.println("7. Assign Task to Project");
         System.out.println("8. Add Subtask");
         System.out.println("9. Search Tasks");
+        System.out.println("10. Export Tasks to CSV");
         System.out.println("0. Exit");
         System.out.print("Choose: ");
     }
@@ -217,6 +222,18 @@ public class Main {
                         task.getTitle(), task.getStatus(), task.getPriority(),
                         task.getDueDate() != null ? task.getDueDate().toString() : "-", proj);
             }
+        }
+    }
+
+    private static void exportTasksToCsv() {
+        System.out.print("Enter output CSV file path: ");
+        String filePath = scanner.nextLine().trim();
+
+        try {
+            csvService.exportTasks(filePath);
+            System.out.println("Tasks exported successfully to: " + filePath);
+        } catch (Exception e) {
+            System.out.println("Error exporting tasks: " + e.getMessage());
         }
     }
 

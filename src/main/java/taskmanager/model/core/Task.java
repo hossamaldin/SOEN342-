@@ -11,6 +11,7 @@ import taskmanager.strategy.TaskOccurrence;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Task extends WorkItem implements CsvSerializable {
     private String description;
@@ -60,8 +61,54 @@ public class Task extends WorkItem implements CsvSerializable {
 
     @Override
     public String toCsv() {
-        // TODO:   implement CSV serialization
-        return "";
+        String subtaskValue = subtasks == null || subtasks.isEmpty()
+                ? ""
+                : subtasks.stream()
+                .map(Subtask::getTitle)
+                .collect(Collectors.joining(" | "));
+
+        String collaboratorValue = assignments == null || assignments.isEmpty()
+                ? ""
+                : assignments.stream()
+                .map(TaskAssignment::getCollaborator)
+                .filter(c -> c != null)
+                .map(Collaborator::getName)
+                .distinct()
+                .collect(Collectors.joining(" | "));
+
+        String collaboratorCategoryValue = assignments == null || assignments.isEmpty()
+                ? ""
+                : assignments.stream()
+                .map(TaskAssignment::getCollaborator)
+                .filter(c -> c != null)
+                .map(c -> c.getCategory().name())
+                .distinct()
+                .collect(Collectors.joining(" | "));
+
+        String projectName = project != null ? project.getName() : "";
+        String projectDescription = project != null ? project.getDescription() : "";
+
+        return String.join(",",
+                escapeCsv(getTitle()),
+                escapeCsv(description),
+                escapeCsv(subtaskValue),
+                escapeCsv(getStatus().name()),
+                escapeCsv(priority != null ? priority.name() : ""),
+                escapeCsv(dueDate != null ? dueDate.toString() : ""),
+                escapeCsv(projectName),
+                escapeCsv(projectDescription),
+                escapeCsv(collaboratorValue),
+                escapeCsv(collaboratorCategoryValue)
+        );
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        String escaped = value.replace("\"", "\"\"");
+        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
+            return "\"" + escaped + "\"";
+        }
+        return escaped;
     }
 
     @Override
