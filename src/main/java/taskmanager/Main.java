@@ -2,16 +2,24 @@ package taskmanager;
 
 import taskmanager.model.core.Task;
 import taskmanager.model.core.User;
+import taskmanager.model.enums.CollaboratorCategory;
 import taskmanager.model.enums.Priority;
 import taskmanager.model.enums.Status;
+import taskmanager.model.interfaces.RecurrenceStrategy;
 import taskmanager.model.project.Project;
 import taskmanager.search.SearchCriteria;
 import taskmanager.search.SearchResult;
-import taskmanager.service.TaskService;
 import taskmanager.service.CsvService;
+import taskmanager.service.TaskService;
+import taskmanager.strategy.DailyRecurrence;
+import taskmanager.strategy.MonthlyRecurrence;
+import taskmanager.strategy.WeeklyRecurrence;
 
+import java.io.IOException;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -43,7 +51,12 @@ public class Main {
                 case "7": assignTaskToProject(); break;
                 case "8": addSubtask(); break;
                 case "9": searchTasks(); break;
-                case "10": exportTasksToCsv(); break;
+                case "10": exportAllTasksCsv(); break;
+                case "11": importTasksCsv(); break;
+                case "12": setRecurringTask(); break;
+                case "13": addCollaborator(); break;
+                case "14": assignTaskToCollaboratorMenu(); break;
+                case "15": exportSearchResultsCsv(); break;
                 case "0": running = false; System.out.println("Goodbye!"); break;
                 default: System.out.println("Invalid option.");
             }
@@ -63,7 +76,12 @@ public class Main {
         System.out.println("7. Assign Task to Project");
         System.out.println("8. Add Subtask");
         System.out.println("9. Search Tasks");
-        System.out.println("10. Export Tasks to CSV");
+        System.out.println("10. Export all tasks to CSV");
+        System.out.println("11. Import tasks from CSV");
+        System.out.println("12. Set recurring pattern on task");
+        System.out.println("13. Add collaborator to project");
+        System.out.println("14. Assign task to collaborator");
+        System.out.println("15. Export search results to CSV");
         System.out.println("0. Exit");
         System.out.print("Choose: ");
     }
@@ -179,7 +197,7 @@ public class Main {
         }
     }
 
-    private static void searchTasks() {
+    private static SearchCriteria promptSearchCriteria() {
         SearchCriteria criteria = new SearchCriteria();
 
         System.out.print("Name match (Enter to skip): ");
@@ -208,6 +226,21 @@ public class Main {
         String endStr = scanner.nextLine().trim();
         if (!endStr.isEmpty()) criteria.setPeriodEnd(parseDate(endStr));
 
+        System.out.print("Day of week MON..SUN (Enter to skip): ");
+        String dowStr = scanner.nextLine().trim();
+        if (!dowStr.isEmpty()) {
+            try {
+                criteria.setDayOfWeek(DayOfWeek.valueOf(dowStr.trim().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid day of week, skipping.");
+            }
+        }
+
+        return criteria;
+    }
+
+    private static void searchTasks() {
+        SearchCriteria criteria = promptSearchCriteria();
         SearchResult result = taskService.searchTasks(criteria);
 
         if (result.isEmpty()) {
@@ -225,15 +258,140 @@ public class Main {
         }
     }
 
-    private static void exportTasksToCsv() {
-        System.out.print("Enter output CSV file path: ");
-        String filePath = scanner.nextLine().trim();
-
+    private static void exportAllTasksCsv() {
+        System.out.print("Output file path: ");
+        String path = scanner.nextLine().trim();
         try {
-            csvService.exportTasks(filePath);
-            System.out.println("Tasks exported successfully to: " + filePath);
-        } catch (Exception e) {
-            System.out.println("Error exporting tasks: " + e.getMessage());
+            csvService.exportTasks(path);
+            System.out.println("Exported tasks to " + path);
+        } catch (IOException e) {
+            System.out.println("Export failed: " + e.getMessage());
+        }
+    }
+
+    private static void importTasksCsv() {
+        System.out.print("Input file path: ");
+        String path = scanner.nextLine().trim();
+        try {
+            csvService.importTasks(path);
+            System.out.println("Import completed.");
+        } catch (IOException e) {
+            System.out.println("Import failed: " + e.getMessage());
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("Import failed: " + e.getMessage());
+        }
+    }
+
+    private static void exportSearchResultsCsv() {
+        SearchCriteria criteria = promptSearchCriteria();
+        SearchResult result = taskService.searchTasks(criteria);
+        if (result.isEmpty()) {
+            System.out.println("No tasks match; nothing exported.");
+            return;
+        }
+        System.out.print("Output file path: ");
+        String path = scanner.nextLine().trim();
+        try {
+            csvService.exportSearchResult(result, path);
+            System.out.println("Exported " + result.size() + " task(s) (with sub-occurrence rows) to " + path);
+        } catch (IOException e) {
+            System.out.println("Export failed: " + e.getMessage());
+        }
+    }
+
+    private static void setRecurringTask() {
+        System.out.print("Task name: ");
+        String taskName = scanner.nextLine().trim();
+        System.out.println("Pattern: 1=Daily, 2=Weekly, 3=Monthly, 0=Clear recurrence");
+        System.out.print("Choice: ");
+        String type = scanner.nextLine().trim();
+        try {
+            if ("0".equals(type)) {
+                taskService.setRecurringTask(taskName, null);
+                System.out.println("Recurrence cleared.");
+                return;
+            }
+            System.out.print("Interval (e.g. every N days/weeks/months): ");
+            int interval = Integer.parseInt(scanner.nextLine().trim());
+            System.out.print("Start date YYYY-MM-DD: ");
+            LocalDate start = requireDate(scanner.nextLine().trim());
+            System.out.print("End date YYYY-MM-DD: ");
+            LocalDate end = requireDate(scanner.nextLine().trim());
+            RecurrenceStrategy strategy;
+            switch (type) {
+                case "1":
+                    strategy = new DailyRecurrence(interval, start, end);
+                    break;
+                case "2":
+                    System.out.print("Weekdays (comma-separated MON,TUE,...): ");
+                    List<DayOfWeek> days = parseDayOfWeekList(scanner.nextLine());
+                    strategy = new WeeklyRecurrence(interval, days, start, end);
+                    break;
+                case "3":
+                    System.out.print("Day of month (1-31): ");
+                    int dom = Integer.parseInt(scanner.nextLine().trim());
+                    strategy = new MonthlyRecurrence(interval, dom, start, end);
+                    break;
+                default:
+                    System.out.println("Invalid pattern type.");
+                    return;
+            }
+            taskService.setRecurringTask(taskName, strategy);
+            Task t = taskService.findTaskByName(taskName);
+            int n = t != null ? t.getOccurrences().size() : 0;
+            System.out.println("Recurrence applied. Generated " + n + " occurrence(s).");
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static List<DayOfWeek> parseDayOfWeekList(String line) {
+        List<DayOfWeek> out = new ArrayList<>();
+        if (line == null || line.isBlank()) return out;
+        for (String part : line.split(",")) {
+            String p = part.trim().toUpperCase();
+            if (p.isEmpty()) continue;
+            out.add(DayOfWeek.valueOf(p));
+        }
+        return out;
+    }
+
+    private static LocalDate requireDate(String str) {
+        LocalDate d = parseDate(str);
+        if (d == null) throw new IllegalArgumentException("Invalid date: " + str);
+        return d;
+    }
+
+    private static void addCollaborator() {
+        System.out.print("Project name: ");
+        String projectName = scanner.nextLine().trim();
+        System.out.print("Collaborator name: ");
+        String name = scanner.nextLine().trim();
+        System.out.print("Category JUNIOR/INTERMEDIATE/SENIOR: ");
+        String catStr = scanner.nextLine().trim();
+        try {
+            CollaboratorCategory cat = CollaboratorCategory.valueOf(catStr.toUpperCase());
+            taskService.addCollaborator(projectName, name, cat);
+            System.out.println("Collaborator added.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void assignTaskToCollaboratorMenu() {
+        System.out.print("Task name: ");
+        String taskName = scanner.nextLine().trim();
+        System.out.print("Project name (where collaborator is defined): ");
+        String projectName = scanner.nextLine().trim();
+        System.out.print("Collaborator name: ");
+        String collabName = scanner.nextLine().trim();
+        try {
+            taskService.assignTaskToCollaborator(taskName, projectName, collabName);
+            System.out.println("Task assigned; collaborator subtask created.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 

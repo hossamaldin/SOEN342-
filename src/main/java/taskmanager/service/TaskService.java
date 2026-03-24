@@ -3,8 +3,11 @@ package taskmanager.service;
 import taskmanager.model.core.Subtask;
 import taskmanager.model.core.Task;
 import taskmanager.model.core.User;
+import taskmanager.model.enums.CollaboratorCategory;
 import taskmanager.model.enums.Priority;
 import taskmanager.model.enums.Status;
+import taskmanager.model.interfaces.RecurrenceStrategy;
+import taskmanager.model.project.Collaborator;
 import taskmanager.model.project.Project;
 import taskmanager.search.SearchCriteria;
 import taskmanager.search.SearchResult;
@@ -93,6 +96,50 @@ public class TaskService {
         parent.recordActivity("Subtask added: " + subtaskTitle);
     }
 
+    public void setRecurringTask(String taskName, RecurrenceStrategy strategy) {
+        Task task = findTaskByName(taskName);
+        if (task == null) throw new IllegalArgumentException("Task not found: " + taskName);
+        task.setRecurring(strategy);
+        task.recordActivity(strategy == null ? "Recurrence cleared" : "Recurrence pattern set");
+    }
+
+    public Collaborator addCollaborator(String projectName, String collaboratorName, CollaboratorCategory category) {
+        Project project = findProjectByName(projectName);
+        if (project == null) throw new IllegalArgumentException("Project not found: " + projectName);
+        Collaborator existing = project.findCollaborator(collaboratorName);
+        if (existing != null) {
+            throw new IllegalArgumentException("Collaborator already exists in project: " + collaboratorName);
+        }
+        Collaborator c = new Collaborator(collaboratorName, category, project);
+        project.addCollaborator(c);
+        return c;
+    }
+
+    public void assignTaskToCollaborator(String taskName, String projectName, String collaboratorName) {
+        Task task = findTaskByName(taskName);
+        if (task == null) throw new IllegalArgumentException("Task not found: " + taskName);
+        Project project = findProjectByName(projectName);
+        if (project == null) throw new IllegalArgumentException("Project not found: " + projectName);
+        Collaborator collaborator = project.findCollaborator(collaboratorName);
+        if (collaborator == null) {
+            throw new IllegalArgumentException("Collaborator not found in project: " + collaboratorName);
+        }
+        if (task.getProject() != null && !task.getProject().getName().equalsIgnoreCase(project.getName())) {
+            throw new IllegalArgumentException("Task is assigned to a different project");
+        }
+        if (task.getProject() == null) {
+            task.setProject(project);
+        }
+        String expectedTitle = task.getTitle() + " (" + collaborator.getName() + ")";
+        boolean alreadyLinked = task.getSubtasks().stream()
+                .anyMatch(s -> collaborator.equals(s.getAssignedTo())
+                        && expectedTitle.equalsIgnoreCase(s.getTitle()));
+        if (alreadyLinked) {
+            return;
+        }
+        task.assignToCollaborator(collaborator);
+    }
+
     //  Search Tasks
     public SearchResult searchTasks(SearchCriteria criteria) {
         List<Task> result;
@@ -143,6 +190,14 @@ public class TaskService {
                 .orElse(null);
     }
 
+    public Task findTaskByTitleAndDueDate(String title, LocalDate dueDate) {
+        return tasks.stream()
+                .filter(t -> t.getTitle().equalsIgnoreCase(title))
+                .filter(t -> Objects.equals(t.getDueDate(), dueDate))
+                .findFirst()
+                .orElse(null);
+    }
+
     public Project findProjectByName(String name) {
         return projects.stream()
                 .filter(p -> p.getName().equalsIgnoreCase(name))
@@ -157,6 +212,15 @@ public class TaskService {
             projects.add(project);
         }
         return project;
+    }
+
+    public Collaborator findOrCreateCollaborator(Project project, String name, CollaboratorCategory category) {
+        Collaborator c = project.findCollaborator(name);
+        if (c == null) {
+            c = new Collaborator(name, category, project);
+            project.addCollaborator(c);
+        }
+        return c;
     }
 
     public void addTask(Task task) { tasks.add(task); }
