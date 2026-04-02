@@ -1,0 +1,23 @@
+-- Constraint 1: Max subtasks per task
+context Task
+inv MaxSubtasks:
+  self.subtasks->size() <= 20
+
+-- Constraint 2: Max open tasks without due date (system-wide)
+context TaskService
+inv MaxOpenTasksWithoutDueDate:
+  self.tasks
+    ->select(t | t.status = Status::OPEN and t.dueDate.oclIsUndefined())
+    ->size() <= 50
+
+-- Constraint 3: Category limit must be positive
+context CollaboratorCategory
+inv PositiveOpenTaskLimit:
+  self.openTaskLimit > 0
+
+-- Constraint 4: No collaborator overload
+context Collaborator
+inv NoOverload:
+  self.assignedSubtasks
+    ->select(s | s.status = Status::OPEN)
+    ->size() <= self.category.openTaskLimit
