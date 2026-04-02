@@ -28,7 +28,16 @@ public class TaskService {
     }
 
     //  Create Task
+    // OCL: "The number of open tasks without a due date should not exceed 50."
     public Task createTask(String title, String description, LocalDate dueDate, Priority priority) {
+        if (dueDate == null) {
+            long openWithoutDueDate = tasks.stream()
+                    .filter(t -> t.isOpen() && t.getDueDate() == null)
+                    .count();
+            if (openWithoutDueDate >= 50)
+                throw new IllegalArgumentException(
+                        "OCL violation: Cannot create more than 50 open tasks without a due date.");
+        }
         Task task = new Task(title, description, dueDate, priority);
         tasks.add(task);
         task.recordActivity("Task created");
@@ -91,6 +100,9 @@ public class TaskService {
     public void addSubtask(String parentTaskName, String subtaskTitle) {
         Task parent = findTaskByName(parentTaskName);
         if (parent == null) throw new IllegalArgumentException("Task not found: " + parentTaskName);
+        if (parent.getSubtasks().size() >= 20)
+            throw new IllegalArgumentException(
+                    "OCL violation: A task cannot have more than 20 sub-tasks.");
         Subtask subtask = new Subtask(subtaskTitle, parent);
         parent.addSubtask(subtask);
         parent.recordActivity("Subtask added: " + subtaskTitle);
@@ -223,6 +235,22 @@ public class TaskService {
         return c;
     }
 
+    // Collaborator management
+
+    // Returns every collaborator across all projects.
+    public List<Collaborator> getAllCollaborators() {
+        return projects.stream()
+                .flatMap(p -> p.getCollaborators().stream())
+                .collect(Collectors.toList());
+    }
+
+    public List<Collaborator> getOverloadedCollaborators() {
+        return getAllCollaborators().stream()
+                .filter(c -> c.getOpenTaskCount() > c.getCategory().getOpenTaskLimit())
+                .collect(Collectors.toList());
+    }
+
+    // Accessors
     public void addTask(Task task) { tasks.add(task); }
     public List<Task> getTasks() { return tasks; }
     public List<Project> getProjects() { return projects; }
