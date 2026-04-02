@@ -1,10 +1,12 @@
 package taskmanager;
 
+import taskmanager.gateway.ICalGateway;
 import taskmanager.model.core.Task;
 import taskmanager.model.core.User;
 import taskmanager.model.enums.CollaboratorCategory;
 import taskmanager.model.enums.Priority;
 import taskmanager.model.enums.Status;
+import taskmanager.model.project.Collaborator;
 import taskmanager.model.interfaces.RecurrenceStrategy;
 import taskmanager.model.project.Project;
 import taskmanager.search.SearchCriteria;
@@ -25,12 +27,14 @@ import java.util.Scanner;
 
 public class Main {
     private static TaskService taskService;
+    private static ICalGateway iCalGateway;
     private static CsvService csvService;
     private static Scanner scanner;
 
     public static void main(String[] args) {
         User user = new User("Default User");
         taskService = new TaskService(user);
+        iCalGateway = new ICalGateway(taskService);
         csvService = new CsvService(taskService);
         scanner = new Scanner(System.in);
 
@@ -50,14 +54,18 @@ public class Main {
                 case "6": createProject(); break;
                 case "7": assignTaskToProject(); break;
                 case "8": addSubtask(); break;
-                case "9": searchTasks(); break;
+                case "9":  searchTasks(); break;
                 case "10": exportAllTasksCsv(); break;
                 case "11": importTasksCsv(); break;
                 case "12": setRecurringTask(); break;
                 case "13": addCollaborator(); break;
                 case "14": assignTaskToCollaboratorMenu(); break;
                 case "15": exportSearchResultsCsv(); break;
-                case "0": running = false; System.out.println("Goodbye!"); break;
+                case "16": exportSingleTaskToICal(); break;
+                case "17": exportProjectToICal(); break;
+                case "18": exportFilteredTasksToICal(); break;
+                case "19": listOverloadedCollaborators(); break;
+                case "0":  running = false; System.out.println("Goodbye!"); break;
                 default: System.out.println("Invalid option.");
             }
             System.out.println();
@@ -67,22 +75,26 @@ public class Main {
 
     private static void printMenu() {
         System.out.println("--- Menu ---");
-        System.out.println("1. Create Task");
-        System.out.println("2. View All Tasks");
-        System.out.println("3. Update Task");
-        System.out.println("4. Mark Task Complete");
-        System.out.println("5. Cancel Task");
-        System.out.println("6. Create Project");
-        System.out.println("7. Assign Task to Project");
-        System.out.println("8. Add Subtask");
-        System.out.println("9. Search Tasks");
+        System.out.println("1.  Create Task");
+        System.out.println("2.  View All Tasks");
+        System.out.println("3.  Update Task");
+        System.out.println("4.  Mark Task Complete");
+        System.out.println("5.  Cancel Task");
+        System.out.println("6.  Create Project");
+        System.out.println("7.  Assign Task to Project");
+        System.out.println("8.  Add Subtask");
+        System.out.println("9.  Search Tasks");
         System.out.println("10. Export all tasks to CSV");
         System.out.println("11. Import tasks from CSV");
         System.out.println("12. Set recurring pattern on task");
         System.out.println("13. Add collaborator to project");
         System.out.println("14. Assign task to collaborator");
         System.out.println("15. Export search results to CSV");
-        System.out.println("0. Exit");
+        System.out.println("16. Export Single Task to iCal");
+        System.out.println("17. Export Project to iCal");
+        System.out.println("18. Export Filtered Tasks to iCal");
+        System.out.println("19. List Overloaded Collaborators");
+        System.out.println("0.  Exit");
         System.out.print("Choose: ");
     }
 
@@ -392,6 +404,145 @@ public class Main {
             System.out.println("Task assigned; collaborator subtask created.");
         } catch (IllegalArgumentException | IllegalStateException e) {
             System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    // iCal export handlers (options 16, 17, 18)
+
+    private static void exportSingleTaskToICal() {
+        List<Task> tasks = taskService.viewTasks();
+        if (tasks.isEmpty()) {
+            System.out.println("No tasks available to export.");
+            return;
+        }
+        System.out.println("Available tasks:");
+        for (int i = 0; i < tasks.size(); i++) {
+            Task t = tasks.get(i);
+            String due = t.getDueDate() != null ? t.getDueDate().toString() : "no due date - not eligible";
+            System.out.printf("  %d. %-20s [%s] Due: %s%n", i + 1, t.getTitle(), t.getStatus(), due);
+        }
+        System.out.print("Enter task number: ");
+        String input = scanner.nextLine().trim();
+        try {
+            int index = Integer.parseInt(input) - 1;
+            if (index < 0 || index >= tasks.size()) {
+                System.out.println("Invalid selection.");
+                return;
+            }
+            String taskName = tasks.get(index).getTitle();
+            String filePath = buildExportPath(taskName);
+            List<Task> exported = iCalGateway.exportSingleTask(taskName, filePath);
+            printExportSummary(exported, filePath);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input.");
+        } catch (IllegalArgumentException | IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void exportProjectToICal() {
+        List<taskmanager.model.project.Project> projects = taskService.getProjects();
+        if (projects.isEmpty()) {
+            System.out.println("No projects available to export.");
+            return;
+        }
+        System.out.println("Available projects:");
+        for (int i = 0; i < projects.size(); i++) {
+            System.out.printf("  %d. %s%n", i + 1, projects.get(i).getName());
+        }
+        System.out.print("Enter project number: ");
+        String input = scanner.nextLine().trim();
+        try {
+            int index = Integer.parseInt(input) - 1;
+            if (index < 0 || index >= projects.size()) {
+                System.out.println("Invalid selection.");
+                return;
+            }
+            String projectName = projects.get(index).getName();
+            String filePath = buildExportPath("project_" + projectName);
+            List<Task> exported = iCalGateway.exportProject(projectName, filePath);
+            printExportSummary(exported, filePath);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input.");
+        } catch (IllegalArgumentException | IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void exportFilteredTasksToICal() {
+        System.out.println("Set filters (only tasks with a due date will be exported):");
+        SearchCriteria criteria = new SearchCriteria();
+
+        System.out.print("Status OPEN/COMPLETED/CANCELLED (Enter to skip): ");
+        String statusStr = scanner.nextLine().trim();
+        if (!statusStr.isEmpty()) {
+            try { criteria.setTaskStatus(Status.valueOf(statusStr.toUpperCase())); }
+            catch (IllegalArgumentException e) { System.out.println("Invalid status, skipping."); }
+        }
+
+        System.out.print("Period start YYYY-MM-DD (Enter to skip): ");
+        String startStr = scanner.nextLine().trim();
+        if (!startStr.isEmpty()) criteria.setPeriodStart(parseDate(startStr));
+
+        System.out.print("Period end YYYY-MM-DD (Enter to skip): ");
+        String endStr = scanner.nextLine().trim();
+        if (!endStr.isEmpty()) criteria.setPeriodEnd(parseDate(endStr));
+
+        try {
+            String filePath = buildExportPath("filtered_tasks");
+            List<Task> exported = iCalGateway.exportFiltered(criteria, filePath);
+            printExportSummary(exported, filePath);
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Builds a safe file path inside the exports/ folder.
+     */
+    private static String buildExportPath(String name) throws IOException {
+        java.io.File exportsDir = new java.io.File("exports");
+        if (!exportsDir.exists()) exportsDir.mkdirs();
+        String safeName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        return "exports/" + safeName + ".ics";
+    }
+
+    /** Prints a table of the tasks that were written to the .ics file. */
+    private static void printExportSummary(List<Task> exported, String filePath) {
+        if (exported.isEmpty()) {
+            System.out.println("No eligible tasks to export (tasks must have a due date).");
+            return;
+        }
+        System.out.println("\nExported " + exported.size() + " task(s) to: " + filePath);
+        System.out.printf("%-22s %-12s %-10s %-12s %-15s%n",
+                "Task", "Status", "Priority", "Due Date", "Project");
+        System.out.println("-".repeat(74));
+        for (Task t : exported) {
+            String proj = t.getProject() != null ? t.getProject().getName() : "-";
+            System.out.printf("%-22s %-12s %-10s %-12s %-15s%n",
+                    t.getTitle(), t.getStatus(), t.getPriority(),
+                    t.getDueDate().toString(), proj);
+        }
+    }
+
+
+    // Overload listing handler (option 19)
+
+    private static void listOverloadedCollaborators() {
+        List<Collaborator> overloaded = taskService.getOverloadedCollaborators();
+        if (overloaded.isEmpty()) {
+            System.out.println("No overloaded collaborators.");
+            return;
+        }
+        System.out.println("Overloaded collaborators:");
+        System.out.printf("%-20s %-15s %-10s %-10s%n", "Name", "Category", "Open", "Limit");
+        System.out.println("-".repeat(58));
+        for (Collaborator c : overloaded) {
+            System.out.printf("%-20s %-15s %-10d %-10d%n",
+                    c.getName(),
+                    c.getCategory(),
+                    c.getOpenTaskCount(),
+                    c.getCategory().getOpenTaskLimit());
         }
     }
 
