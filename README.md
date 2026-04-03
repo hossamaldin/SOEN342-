@@ -36,6 +36,8 @@ java -cp out taskmanager.Main
 
 After the first compile, you only need `java -cp out taskmanager.Main` to relaunch.
 Use the numbered menu and type 0 to exit.
+On exit, all data is automatically saved to the database.
+
 
 ---
 
@@ -118,6 +120,22 @@ Use the numbered menu and type 0 to exit.
 
 ### Overload Detection
 - Option 19 lists any collaborator currently exceeding their category open-task limit
+
+### Persistence (SQLite)
+
+- The application now uses a SQLite database (`taskmanager.db`) for persistent storage
+- Data is automatically loaded on startup and saved on exit (option 0 on the menu)
+- Stored data includes:
+  - Tasks
+  - Projects
+  - Collaborators
+  - Subtasks
+  - Recurrence settings
+  - Task assignments
+  - Activity logs
+
+- The database file (`taskmanager.db`) is created automatically in the project root directory
+- No manual setup is required
 
 ---
 
