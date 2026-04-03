@@ -9,6 +9,8 @@ import taskmanager.model.enums.Status;
 import taskmanager.model.project.Collaborator;
 import taskmanager.model.interfaces.RecurrenceStrategy;
 import taskmanager.model.project.Project;
+import taskmanager.persistence.DatabaseManager;
+import taskmanager.persistence.PersistenceService;
 import taskmanager.search.SearchCriteria;
 import taskmanager.search.SearchResult;
 import taskmanager.service.CsvService;
@@ -29,6 +31,7 @@ public class Main {
     private static TaskService taskService;
     private static ICalGateway iCalGateway;
     private static CsvService csvService;
+    private static PersistenceService persistenceService;
     private static Scanner scanner;
 
     public static void main(String[] args) {
@@ -37,6 +40,12 @@ public class Main {
         iCalGateway = new ICalGateway(taskService);
         csvService = new CsvService(taskService);
         scanner = new Scanner(System.in);
+
+        DatabaseManager databaseManager = new DatabaseManager();
+        databaseManager.initializeDatabase();
+
+        persistenceService = new PersistenceService(databaseManager);
+        persistenceService.loadAll(taskService);
 
         System.out.println("=== Personal Task Management System ===");
         System.out.println("Welcome, " + user.getName() + "!\n");
@@ -65,7 +74,9 @@ public class Main {
                 case "17": exportProjectToICal(); break;
                 case "18": exportFilteredTasksToICal(); break;
                 case "19": listOverloadedCollaborators(); break;
-                case "0":  running = false; System.out.println("Goodbye!"); break;
+                case "0":
+                    persistenceService.saveAll(taskService);
+                    running = false; System.out.println("Goodbye!"); break;
                 default: System.out.println("Invalid option.");
             }
             System.out.println();
@@ -254,7 +265,7 @@ public class Main {
     private static void searchTasks() {
         SearchCriteria criteria = promptSearchCriteria();
         SearchResult result = taskService.searchTasks(criteria);
-
+ 
         if (result.isEmpty()) {
             System.out.println("No matching tasks found.");
         } else {

@@ -255,4 +255,7 @@ public class TaskService {
     public List<Task> getTasks() { return tasks; }
     public List<Project> getProjects() { return projects; }
     public User getCurrentUser() { return currentUser; }
+
+    public void addLoadedTask(Task task) { tasks.add(task); }
+    public void addLoadedProject(Project project) { projects.add(project); }
 }

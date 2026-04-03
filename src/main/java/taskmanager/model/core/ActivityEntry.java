@@ -11,6 +11,11 @@ public class ActivityEntry {
         this.description = description;
     }
 
+    public ActivityEntry(LocalDateTime timestamp, String description) {
+        this.timestamp = timestamp;
+        this.description = description;
+    }
+
     public LocalDateTime getTimestamp() { return timestamp; }
     public String getDescription() { return description; }
 

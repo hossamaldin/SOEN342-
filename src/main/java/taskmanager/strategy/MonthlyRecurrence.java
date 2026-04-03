@@ -53,4 +53,9 @@ public class MonthlyRecurrence implements RecurrenceStrategy {
         }
         return out;
     }
+
+    public int getInterval() { return interval; }
+    public int getDayOfMonth() { return dayOfMonth; }
+    public LocalDate getStartDate() { return startDate; }
+    public LocalDate getEndDate() { return endDate; }
 }

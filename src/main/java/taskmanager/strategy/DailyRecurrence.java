@@ -42,4 +42,8 @@ public class DailyRecurrence implements RecurrenceStrategy {
         }
         return out;
     }
+
+    public int getInterval() { return interval; }
+    public LocalDate getStartDate() { return startDate; }
+    public LocalDate getEndDate() { return endDate; }
 }
