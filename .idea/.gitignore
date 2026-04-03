@@ -11,3 +11,5 @@
 
 out/
 *.class
+
+taskmanager.db

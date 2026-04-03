@@ -63,4 +63,8 @@ public class WeeklyRecurrence implements RecurrenceStrategy {
     public List<DayOfWeek> getWeekdays() {
         return new ArrayList<>(weekdays);
     }
+
+    public int getInterval() { return interval; }
+    public LocalDate getStartDate() { return startDate; }
+    public LocalDate getEndDate() { return endDate; }
 }

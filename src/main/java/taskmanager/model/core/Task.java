@@ -150,6 +150,7 @@ public class Task extends WorkItem implements CsvSerializable {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public LocalDate getCreationDate() { return creationDate; }
+    public void setCreationDate(LocalDate creationDate) { this.creationDate = creationDate; }
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
     public Priority getPriority() { return priority; }
@@ -162,4 +163,5 @@ public class Task extends WorkItem implements CsvSerializable {
     public List<TaskOccurrence> getOccurrences() { return occurrences; }
     public List<TaskAssignment> getAssignments() { return assignments; }
     public RecurrenceStrategy getRecurrenceStrategy() { return recurrenceStrategy; }
+    public void setRecurrenceStrategy(RecurrenceStrategy recurrenceStrategy) { this.recurrenceStrategy = recurrenceStrategy; }
 }

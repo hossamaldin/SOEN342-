@@ -18,7 +18,15 @@ public class TaskAssignment {
         this.subtask = subtask;
     }
 
+    public TaskAssignment(LocalDate assignedDate, Status status, Collaborator collaborator, Subtask subtask) {
+        this.assignedDate = assignedDate;
+        this.status = status;
+        this.collaborator = collaborator;
+        this.subtask = subtask;
+    }
+
     public LocalDate getAssignedDate() { return assignedDate; }
+    public void setAssignedDate(LocalDate assignedDate) {this.assignedDate = assignedDate;}
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
     public Collaborator getCollaborator() { return collaborator; }
