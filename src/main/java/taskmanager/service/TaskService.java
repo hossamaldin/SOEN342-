@@ -1,6 +1,7 @@
 package taskmanager.service;
 
 import taskmanager.model.core.Subtask;
+import taskmanager.model.core.Tag;
 import taskmanager.model.core.Task;
 import taskmanager.model.core.User;
 import taskmanager.model.enums.CollaboratorCategory;
@@ -108,6 +109,14 @@ public class TaskService {
         parent.recordActivity("Subtask added: " + subtaskTitle);
     }
 
+    public void addTag(String taskName, String tagName) {
+        Task task = findTaskByName(taskName);
+        if (task == null) throw new IllegalArgumentException("Task not found: " + taskName);
+        if (tagName == null || tagName.isBlank()) throw new IllegalArgumentException("Tag name cannot be empty");
+        task.addTag(new Tag(tagName.trim()));
+        task.recordActivity("Tag added: " + tagName.trim());
+    }
+
     public void setRecurringTask(String taskName, RecurrenceStrategy strategy) {
         Task task = findTaskByName(taskName);
         if (task == null) throw new IllegalArgumentException("Task not found: " + taskName);
@@ -190,6 +199,12 @@ public class TaskService {
         }
         if (criteria.getDayOfWeek() != null && task.getDueDate() != null) {
             if (task.getDueDate().getDayOfWeek() != criteria.getDayOfWeek()) return false;
+        }
+        if (criteria.getTagMatch() != null && !criteria.getTagMatch().isEmpty()) {
+            String tagLower = criteria.getTagMatch().toLowerCase();
+            boolean hasTag = task.getTags().stream()
+                    .anyMatch(tag -> tag.getName().toLowerCase().contains(tagLower));
+            if (!hasTag) return false;
         }
         return true;
     }

@@ -106,8 +106,11 @@ public class Task extends WorkItem implements CsvSerializable {
         String collabName = collab != null ? CsvUtil.escape(collab.getName()) : "";
         String collabCat = collab != null && collab.getCategory() != null ? collab.getCategory().name() : "";
 
+        String tagsStr = tags.isEmpty() ? "" :
+                CsvUtil.escape(tags.stream().map(Tag::getName).collect(Collectors.joining("|")));
+
         return String.join(",",
-                taskName, desc, subName, statusStr, priStr, dueStr, projName, projDesc, collabName, collabCat);
+                taskName, desc, subName, statusStr, priStr, dueStr, projName, projDesc, collabName, collabCat, tagsStr);
     }
 
     /** All export lines for this task (occurrence and/or subtask rows). */
@@ -143,6 +146,11 @@ public class Task extends WorkItem implements CsvSerializable {
                 setDueDate(LocalDate.parse(c[5].trim()));
             } catch (DateTimeParseException e) {
                 throw new IllegalArgumentException("Invalid due date: " + c[5], e);
+            }
+        }
+        if (c.length > 10 && !c[10].isBlank()) {
+            for (String tagName : CsvUtil.unescape(c[10]).split("\\|")) {
+                if (!tagName.isBlank()) addTag(new Tag(tagName.trim()));
             }
         }
     }
