@@ -1,6 +1,7 @@
 package taskmanager.service;
 
 import taskmanager.model.core.Subtask;
+import taskmanager.model.core.Tag;
 import taskmanager.model.core.Task;
 import taskmanager.model.enums.CollaboratorCategory;
 import taskmanager.model.enums.Priority;
@@ -22,7 +23,7 @@ import java.util.List;
 
 public class CsvService {
     public static final String CSV_HEADER =
-            "TaskName,Description,Subtask,Status,Priority,DueDate,ProjectName,ProjectDescription,Collaborator,CollaboratorCategory";
+            "TaskName,Description,Subtask,Status,Priority,DueDate,ProjectName,ProjectDescription,Collaborator,CollaboratorCategory,Tags";
 
     private final TaskService taskService;
 
@@ -71,8 +72,8 @@ public class CsvService {
 
     private void importRow(String line) {
         String[] p = CsvUtil.splitLine(line);
-        String[] c = new String[10];
-        for (int i = 0; i < 10; i++) {
+        String[] c = new String[11];
+        for (int i = 0; i < 11; i++) {
             c[i] = i < p.length ? p[i] : "";
         }
         String taskName = CsvUtil.unescape(c[0]);
@@ -85,6 +86,7 @@ public class CsvService {
         String projectDescription = CsvUtil.unescape(c[7]);
         String collaboratorName = CsvUtil.unescape(c[8]);
         CollaboratorCategory category = parseCategory(c[9]);
+        String tagsRaw = CsvUtil.unescape(c[10]);
 
         Project project = null;
         if (projectName != null && !projectName.isBlank()) {
@@ -108,6 +110,12 @@ public class CsvService {
             task.setPriority(priority);
             if (project != null) {
                 task.setProject(project);
+            }
+        }
+
+        if (tagsRaw != null && !tagsRaw.isBlank()) {
+            for (String tagName : tagsRaw.split("\\|")) {
+                if (!tagName.isBlank()) task.addTag(new Tag(tagName.trim()));
             }
         }
 

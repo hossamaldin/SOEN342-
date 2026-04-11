@@ -12,12 +12,13 @@ public class SearchCriteria {
     private DayOfWeek dayOfWeek;
     private Status taskStatus;
     private Priority priority;
+    private String tagMatch;
 
     public SearchCriteria() {}
 
     public boolean isEmpty() {
         return nameMatch == null && periodStart == null && periodEnd == null
-                && dayOfWeek == null && taskStatus == null && priority == null;
+                && dayOfWeek == null && taskStatus == null && priority == null && tagMatch == null;
     }
 
     public String getNameMatch() { return nameMatch; }
@@ -32,4 +33,6 @@ public class SearchCriteria {
     public void setTaskStatus(Status taskStatus) { this.taskStatus = taskStatus; }
     public Priority getPriority() { return priority; }
     public void setPriority(Priority priority) { this.priority = priority; }
+    public String getTagMatch() { return tagMatch; }
+    public void setTagMatch(String tagMatch) { this.tagMatch = tagMatch; }
 }

@@ -1,6 +1,7 @@
 package taskmanager;
 
 import taskmanager.gateway.ICalGateway;
+import taskmanager.model.core.Tag;
 import taskmanager.model.core.Task;
 import taskmanager.model.core.User;
 import taskmanager.model.enums.CollaboratorCategory;
@@ -74,6 +75,7 @@ public class Main {
                 case "17": exportProjectToICal(); break;
                 case "18": exportFilteredTasksToICal(); break;
                 case "19": listOverloadedCollaborators(); break;
+                case "20": addTagToTask(); break;
                 case "0":
                     persistenceService.saveAll(taskService);
                     running = false; System.out.println("Goodbye!"); break;
@@ -105,6 +107,7 @@ public class Main {
         System.out.println("17. Export Project to iCal");
         System.out.println("18. Export Filtered Tasks to iCal");
         System.out.println("19. List Overloaded Collaborators");
+        System.out.println("20. Add Tag to Task");
         System.out.println("0.  Exit");
         System.out.print("Choose: ");
     }
@@ -114,11 +117,18 @@ public class Main {
         String name = scanner.nextLine().trim();
         System.out.print("Description: ");
         String desc = scanner.nextLine().trim();
-        System.out.print("Due date (YYYY-MM-DD): ");
+        System.out.print("Due date (YYYY-MM-DD, Enter to skip): ");
         LocalDate dueDate = parseDate(scanner.nextLine().trim());
         System.out.print("Priority (LOW/MEDIUM/HIGH): ");
         Priority priority = parsePriority(scanner.nextLine().trim());
+        System.out.print("Tags (comma-separated, Enter to skip): ");
+        String tagsInput = scanner.nextLine().trim();
         Task task = taskService.createTask(name, desc, dueDate, priority);
+        if (!tagsInput.isEmpty()) {
+            for (String tagName : tagsInput.split(",")) {
+                if (!tagName.isBlank()) task.addTag(new Tag(tagName.trim()));
+            }
+        }
         System.out.println("Task created: " + task.getTitle());
     }
 
@@ -128,13 +138,15 @@ public class Main {
             System.out.println("No tasks in the system.");
             return;
         }
-        System.out.printf("%-20s %-12s %-10s %-12s %-15s%n", "Name", "Status", "Priority", "Due Date", "Project");
-        System.out.println("-".repeat(70));
+        System.out.printf("%-20s %-12s %-10s %-12s %-15s %-20s%n", "Name", "Status", "Priority", "Due Date", "Project", "Tags");
+        System.out.println("-".repeat(90));
         for (Task task : tasks) {
             String proj = task.getProject() != null ? task.getProject().getName() : "-";
-            System.out.printf("%-20s %-12s %-10s %-12s %-15s%n",
+            String tags = task.getTags().isEmpty() ? "-" :
+                    task.getTags().stream().map(Tag::getName).reduce((a, b) -> a + ", " + b).orElse("-");
+            System.out.printf("%-20s %-12s %-10s %-12s %-15s %-20s%n",
                     task.getTitle(), task.getStatus(), task.getPriority(),
-                    task.getDueDate() != null ? task.getDueDate().toString() : "-", proj);
+                    task.getDueDate() != null ? task.getDueDate().toString() : "-", proj, tags);
         }
     }
 
@@ -259,24 +271,30 @@ public class Main {
             }
         }
 
+        System.out.print("Tag (Enter to skip): ");
+        String tagStr = scanner.nextLine().trim();
+        if (!tagStr.isEmpty()) criteria.setTagMatch(tagStr);
+
         return criteria;
     }
 
     private static void searchTasks() {
         SearchCriteria criteria = promptSearchCriteria();
         SearchResult result = taskService.searchTasks(criteria);
- 
+
         if (result.isEmpty()) {
             System.out.println("No matching tasks found.");
         } else {
             System.out.println("\nFound " + result.size() + " task(s):");
-            System.out.printf("%-20s %-12s %-10s %-12s %-15s%n", "Name", "Status", "Priority", "Due Date", "Project");
-            System.out.println("-".repeat(70));
+            System.out.printf("%-20s %-12s %-10s %-12s %-15s %-20s%n", "Name", "Status", "Priority", "Due Date", "Project", "Tags");
+            System.out.println("-".repeat(90));
             for (Task task : result.getTasks()) {
                 String proj = task.getProject() != null ? task.getProject().getName() : "-";
-                System.out.printf("%-20s %-12s %-10s %-12s %-15s%n",
+                String tags = task.getTags().isEmpty() ? "-" :
+                        task.getTags().stream().map(Tag::getName).reduce((a, b) -> a + ", " + b).orElse("-");
+                System.out.printf("%-20s %-12s %-10s %-12s %-15s %-20s%n",
                         task.getTitle(), task.getStatus(), task.getPriority(),
-                        task.getDueDate() != null ? task.getDueDate().toString() : "-", proj);
+                        task.getDueDate() != null ? task.getDueDate().toString() : "-", proj, tags);
             }
         }
     }
@@ -536,6 +554,27 @@ public class Main {
         }
     }
 
+
+    // Tag management (option 20)
+
+    private static void addTagToTask() {
+        System.out.print("Task name: ");
+        String taskName = scanner.nextLine().trim();
+        System.out.print("Tag name(s) (comma-separated): ");
+        String input = scanner.nextLine().trim();
+        if (input.isEmpty()) {
+            System.out.println("No tags entered.");
+            return;
+        }
+        try {
+            for (String tagName : input.split(",")) {
+                if (!tagName.isBlank()) taskService.addTag(taskName, tagName.trim());
+            }
+            System.out.println("Tag(s) added.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
 
     // Overload listing handler (option 19)
 
