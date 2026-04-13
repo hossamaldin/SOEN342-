@@ -24,6 +24,7 @@ public class DatabaseManager {
             createSubtasksTable(stmt);
             createTaskAssignmentsTable(stmt);
             createActivityLogTable(stmt);
+            createTagsTable(stmt);
 
             System.out.println("Database initialized successfully.");
 
@@ -112,6 +113,17 @@ public class DatabaseManager {
                         "task_id INTEGER NOT NULL, " +
                         "timestamp TEXT NOT NULL, " +
                         "description TEXT NOT NULL, " +
+                        "FOREIGN KEY (task_id) REFERENCES tasks(id)" +
+                        ")"
+        );
+    }
+
+    private void createTagsTable(Statement stmt) throws SQLException {
+        stmt.execute(
+                "CREATE TABLE IF NOT EXISTS tags (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "task_id INTEGER NOT NULL, " +
+                        "name TEXT NOT NULL, " +
                         "FOREIGN KEY (task_id) REFERENCES tasks(id)" +
                         ")"
         );
