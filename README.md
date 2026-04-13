@@ -164,23 +164,18 @@ On exit, all data is automatically saved to the database.
 
 ### UML State Machine
 
-* A UML protocol state machine modeling the lifecycle of a `Task` is included in the `Documentation/` folder
+* A UML protocol state machine modeling the lifecycle of a `Task` is included in the `Documentation/Iteration4_Docs` folder
 * States: `OPEN → COMPLETED / CANCELLED`
 
 ### Demo Video
 
-* A 5-minute demo video is included in the `Documentation/` folder
+* A 5-minute demo video is included in the `Documentation/Iteration4_Docs` folder
 
 ### Final Artifacts
 
-All final UML artifacts are in the `Documentation/` folder:
+All final UML artifacts are in the respective `Documentation/Iteration4_Docs` folder.
 
-* Domain Model
-* Class Diagram
-* Data Model
-* State Machine
-
-Previous versions are archived in `Documentation/archives/`.
+Previous Documentation is stored in its respective folder: `Documentation/Iteration[x]_Docs`.
 
 ---
 
