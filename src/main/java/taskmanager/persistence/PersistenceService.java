@@ -2,6 +2,7 @@ package taskmanager.persistence;
 
 import taskmanager.model.core.ActivityEntry;
 import taskmanager.model.core.Subtask;
+import taskmanager.model.core.Tag;
 import taskmanager.model.core.Task;
 import taskmanager.model.enums.CollaboratorCategory;
 import taskmanager.model.enums.Priority;
@@ -42,6 +43,7 @@ public class PersistenceService {
             Map<Subtask, Integer> subtaskIds = saveSubtasks(conn, taskService.viewTasks(), taskIds, collaboratorIds);
             saveAssignments(conn, taskService.viewTasks(), collaboratorIds, subtaskIds);
             saveActivityLogs(conn, taskService.viewTasks(), taskIds);
+            saveTags(conn, taskService.viewTasks(), taskIds);
 
             conn.commit();
             System.out.println("Data saved successfully.");
@@ -60,6 +62,7 @@ public class PersistenceService {
             Map<Integer, Subtask> subtaskMap = loadSubtasks(conn, taskMap, collaboratorMap);
             loadAssignments(conn, collaboratorMap, subtaskMap);
             loadActivityLogs(conn, taskMap);
+            loadTags(conn, taskMap);
 
             System.out.println("Data loaded successfully.");
         } catch (Exception e) {
@@ -71,6 +74,7 @@ public class PersistenceService {
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM task_assignments");
             stmt.executeUpdate("DELETE FROM activity_log");
+            stmt.executeUpdate("DELETE FROM tags");
             stmt.executeUpdate("DELETE FROM subtasks");
             stmt.executeUpdate("DELETE FROM collaborators");
             stmt.executeUpdate("DELETE FROM tasks");
@@ -507,6 +511,44 @@ public class PersistenceService {
                             description
                     );
                     task.getActivityLog().add(entry);
+                }
+            }
+        }
+    }
+
+    private void saveTags(Connection conn,
+                          List<Task> tasks,
+                          Map<Task, Integer> taskIds) throws SQLException {
+        String sql = "INSERT INTO tags(task_id, name) VALUES (?, ?)";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (Task task : tasks) {
+                Integer taskId = taskIds.get(task);
+                if (taskId == null) continue;
+
+                for (Tag tag : task.getTags()) {
+                    ps.setInt(1, taskId);
+                    ps.setString(2, tag.getName());
+                    ps.executeUpdate();
+                }
+            }
+        }
+    }
+
+    private void loadTags(Connection conn,
+                          Map<Integer, Task> taskMap) throws SQLException {
+        String sql = "SELECT task_id, name FROM tags";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                int taskId = rs.getInt("task_id");
+                String name = rs.getString("name");
+
+                Task task = taskMap.get(taskId);
+                if (task != null) {
+                    task.addTag(new Tag(name));
                 }
             }
         }
