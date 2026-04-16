@@ -3,9 +3,14 @@
 
 ## Team Members
 
-- Hossam Mostafa - 40245337
-- Muaaz Ahmed - 40299591
-- Carlos Guevara - 40227586
+- **Hossam Mostafa** (ID: 40245337)  
+  GitHub: [hossamaldin](https://github.com/hossamaldin)
+
+- **Muaaz Ahmed** (ID: 40299591)  
+  GitHub: [MAZAH11](https://github.com/MAZAH11)
+
+- **Carlos Guevara** (ID: 40227586)  
+  GitHub: [carlos21guevara](https://github.com/carlos21guevara)
 
 ---
 
